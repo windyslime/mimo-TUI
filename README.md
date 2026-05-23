@@ -1,7 +1,7 @@
 # 🧠 MiMo-TUI
 
 > 一个基于 Rust 构建的终端原生智能编程助手，以 **MiMo V2.5 Pro** 为核心模型，充分利用 1M Token 超长上下文窗口。支持 TUI 终端界面和 CLI 命令行两种交互方式，无需 Node.js 或 Python 运行时。
-
+> 灵感源于 DeepSeek-TUI https://github.com/Hmbown/DeepSeek-TUI
 ---
 
 ## 目录
