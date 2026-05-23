@@ -12,7 +12,7 @@ use unicode_width::UnicodeWidthStr;
 const MAX_HISTORY: usize = 50;
 
 fn is_ctrl_or_cmd(mods: KeyModifiers) -> bool {
-    mods.contains(KeyModifiers::CONTROL)
+    mods.contains(KeyModifiers::CONTROL) || mods.contains(KeyModifiers::SUPER)
 }
 
 pub struct InputComponent {

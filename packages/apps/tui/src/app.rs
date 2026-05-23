@@ -35,7 +35,7 @@ const DEFAULT_MODEL: &str = "mimo-v2.5-pro";
 const STATUS_TIMEOUT_MS: u64 = 4000;
 
 fn is_ctrl_or_cmd(mods: KeyModifiers) -> bool {
-    mods.contains(KeyModifiers::CONTROL)
+    mods.contains(KeyModifiers::CONTROL) || mods.contains(KeyModifiers::SUPER)
 }
 
 fn get_api_key() -> Result<String> {
@@ -189,7 +189,7 @@ impl App {
     pub fn new() -> Self {
         Self {
             should_quit: false,
-            mode: AppMode::Normal,
+            mode: AppMode::Insert,
             active_view: ActiveView::Chat,
             status_message: None,
             model: DEFAULT_MODEL.to_string(),
@@ -1476,9 +1476,6 @@ impl App {
                 StreamEvent::ContentDelta(text) => {
                     if self.thinking_active {
                         self.thinking_active = false;
-                        if let Some(ref msg_id) = self.stream_msg_id {
-                            self.messages.finish_thinking(msg_id);
-                        }
                     }
                     if let Some(ref msg_id) = self.stream_msg_id {
                         self.messages.append_content(msg_id, &text);
@@ -1492,9 +1489,6 @@ impl App {
                 } => {
                     if self.thinking_active {
                         self.thinking_active = false;
-                        if let Some(ref msg_id) = self.stream_msg_id {
-                            self.messages.finish_thinking(msg_id);
-                        }
                     }
                     self.total_tool_calls += 1;
                     if let Some(ref msg_id) = self.stream_msg_id {
@@ -1532,9 +1526,9 @@ impl App {
                 StreamEvent::Complete => {
                     if self.thinking_active {
                         self.thinking_active = false;
-                        if let Some(ref msg_id) = self.stream_msg_id {
-                            self.messages.finish_thinking(msg_id);
-                        }
+                    }
+                    if let Some(ref msg_id) = self.stream_msg_id {
+                        self.messages.finish_message(msg_id);
                     }
                     self.is_streaming = false;
                     self.stream_msg_id = None;
@@ -1544,9 +1538,9 @@ impl App {
                 StreamEvent::Error(err) => {
                     if self.thinking_active {
                         self.thinking_active = false;
-                        if let Some(ref msg_id) = self.stream_msg_id {
-                            self.messages.finish_thinking(msg_id);
-                        }
+                    }
+                    if let Some(ref msg_id) = self.stream_msg_id {
+                        self.messages.finish_message(msg_id);
                     }
                     self.is_streaming = false;
                     self.stream_msg_id = None;

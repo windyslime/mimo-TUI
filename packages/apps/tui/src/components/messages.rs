@@ -19,8 +19,8 @@ pub struct ChatMessage {
     pub timestamp: DateTime<Utc>,
     pub thinking: Option<String>,
     pub thinking_expanded: bool,
-    pub thinking_start: Option<Instant>,
-    pub thinking_duration: Option<Duration>,
+    pub start_time: Option<Instant>,
+    pub duration: Option<Duration>,
     pub tool_calls: Option<Vec<ToolCallInfo>>,
 }
 
@@ -59,6 +59,11 @@ impl MessagesComponent {
 
     pub fn add_message(&mut self, role: MessageRole, content: String) -> String {
         let id = Uuid::new_v4().to_string();
+        let start_time = if role == MessageRole::Assistant {
+            Some(Instant::now())
+        } else {
+            None
+        };
         self.messages.push(ChatMessage {
             id: id.clone(),
             role,
@@ -66,8 +71,8 @@ impl MessagesComponent {
             timestamp: Utc::now(),
             thinking: None,
             thinking_expanded: false,
-            thinking_start: None,
-            thinking_duration: None,
+            start_time,
+            duration: None,
             tool_calls: None,
         });
         self.scroll_to_bottom();
@@ -76,9 +81,6 @@ impl MessagesComponent {
 
     pub fn add_thinking(&mut self, msg_id: &str, thinking: &str) {
         if let Some(msg) = self.messages.iter_mut().find(|m| m.id == msg_id) {
-            if msg.thinking_start.is_none() {
-                msg.thinking_start = Some(Instant::now());
-            }
             match &mut msg.thinking {
                 Some(existing) => existing.push_str(thinking),
                 None => msg.thinking = Some(thinking.to_string()),
@@ -87,10 +89,10 @@ impl MessagesComponent {
         }
     }
 
-    pub fn finish_thinking(&mut self, msg_id: &str) {
+    pub fn finish_message(&mut self, msg_id: &str) {
         if let Some(msg) = self.messages.iter_mut().find(|m| m.id == msg_id) {
-            if let Some(start) = msg.thinking_start.take() {
-                msg.thinking_duration = Some(start.elapsed());
+            if let Some(start) = msg.start_time.take() {
+                msg.duration = Some(start.elapsed());
             }
         }
     }
@@ -190,17 +192,10 @@ impl MessagesComponent {
 
         for msg in &self.messages {
             lines.push(Line::from(""));
-            lines.push(self.render_role_line(&msg.role, theme));
+            lines.push(self.render_role_line(msg, theme));
 
             if let Some(ref thinking) = msg.thinking {
                 if msg.thinking_expanded {
-                    let duration_str = if let Some(dur) = msg.thinking_duration {
-                        format_duration(dur)
-                    } else if let Some(start) = msg.thinking_start {
-                        format_duration(start.elapsed())
-                    } else {
-                        "...".to_string()
-                    };
                     lines.push(Line::from(vec![
                         Span::styled("○ ", Style::default().fg(theme.muted)),
                         Span::styled(
@@ -208,10 +203,6 @@ impl MessagesComponent {
                             Style::default()
                                 .fg(theme.muted)
                                 .add_modifier(Modifier::ITALIC),
-                        ),
-                        Span::styled(
-                            format!(" · {}", duration_str),
-                            Style::default().fg(theme.muted),
                         ),
                     ]));
                     for think_line in thinking.lines() {
@@ -285,7 +276,8 @@ impl MessagesComponent {
         }
     }
 
-    fn render_role_line(&self, role: &MessageRole, theme: &Theme) -> Line<'_> {
+    fn render_role_line(&self, msg: &ChatMessage, theme: &Theme) -> Line<'_> {
+        let role = &msg.role;
         match role {
             MessageRole::User => Line::from(vec![Span::styled(
                 "You ",
@@ -293,12 +285,31 @@ impl MessagesComponent {
                     .fg(Color::White)
                     .add_modifier(Modifier::BOLD),
             )]),
-            MessageRole::Assistant => Line::from(vec![Span::styled(
-                "Assistant ",
-                Style::default()
-                    .fg(theme.accent)
-                    .add_modifier(Modifier::BOLD),
-            )]),
+            MessageRole::Assistant => {
+                let mut spans = vec![Span::styled(
+                    "Assistant ",
+                    Style::default()
+                        .fg(theme.accent)
+                        .add_modifier(Modifier::BOLD),
+                )];
+                
+                let duration_str = if let Some(dur) = msg.duration {
+                    Some(format_duration(dur))
+                } else if let Some(start) = msg.start_time {
+                    Some(format_duration(start.elapsed()))
+                } else {
+                    None
+                };
+
+                if let Some(d_str) = duration_str {
+                    spans.push(Span::styled(
+                        format!("· {}", d_str),
+                        Style::default().fg(theme.muted),
+                    ));
+                }
+
+                Line::from(spans)
+            }
             MessageRole::System => Line::from(vec![Span::styled(
                 "System ",
                 Style::default()
