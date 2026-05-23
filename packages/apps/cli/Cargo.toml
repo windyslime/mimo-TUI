@@ -1,0 +1,23 @@
+[package]
+name = "mimo-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "CLI for MiMo-TUI"
+
+[[bin]]
+name = "mimo"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+tokio.workspace = true
+dirs.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber = "0.3"
+mimo-config = { path = "../../../crates/config" }
+mimo-core = { path = "../../core" }
+mimo-providers = { path = "../../providers" }
+mimo-tui = { path = "../tui" }
